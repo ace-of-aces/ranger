@@ -17,6 +17,15 @@ class GenericTypeNode extends AbstractResolver
     {
         $base = $this->resolveBase($node->type->name);
 
+        // TODO: hm.
+        if ($base === 'array') {
+            return RangerType::arrayShape(
+                ...collect($node->genericTypes)->map(
+                    fn ($n) => $n instanceof IdentifierTypeNode ? RangerType::string($this->resolveBase($n->name)) : $this->from($n),
+                )->all()
+            );
+        }
+
         // TODO: Fix this, maybe we don't need docblock parser with stan??
         return RangerType::generic(
             $base,

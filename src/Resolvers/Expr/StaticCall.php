@@ -4,6 +4,7 @@ namespace Laravel\Ranger\Resolvers\Expr;
 
 use Laravel\Ranger\Known\Known;
 use Laravel\Ranger\Resolvers\AbstractResolver;
+use Laravel\Ranger\Types\ArrayShapeType;
 use Laravel\Ranger\Types\ClassType;
 use Laravel\Ranger\Types\Contracts\Type as ResultContract;
 use Laravel\Ranger\Types\Type as RangerType;
@@ -55,6 +56,49 @@ class StaticCall extends AbstractResolver
             }
 
             $returnType = $this->reflector->methodReturnType($classVarType, $node->name->name, $node);
+
+            // TODO: Ew
+            // Try to get something more specific if we can
+            if ($returnType instanceof ArrayShapeType) {
+                $reflection = $this->reflector->reflectMethod($classVarType, $node->name->name);
+                $foundNode = null;
+
+                $returns = collect($this->parser->nodeFinder()->find(
+                    $this->parser->parse($reflection),
+                    function ($n) use ($reflection, &$foundNode) {
+                        if (
+                            $n->getStartLine() < $reflection->getStartLine() ||
+                            $n->getEndLine() > $reflection->getEndLine()
+                        ) {
+                            return false;
+                        }
+
+                        $foundNode ??= $n;
+
+                        if (! ($n instanceof Node\Stmt\Return_)) {
+                            return false;
+                        }
+
+                        $parent = $n->getAttribute('parent');
+
+                        while ($parent && $parent !== $foundNode) {
+                            if ($parent instanceof Node\Expr\Closure) {
+                                return false;
+                            }
+
+                            $parent = $parent->getAttribute('parent');
+                        }
+
+                        return $parent === $foundNode;
+                    }
+                ));
+
+                $result = collect($returns)->map(fn ($n) => $this->from($n->expr))->filter();
+
+                if ($result->isNotEmpty()) {
+                    return RangerType::union(...$result->all());
+                }
+            }
 
             if ($returnType) {
                 return $returnType;

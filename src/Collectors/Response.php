@@ -51,6 +51,7 @@ class Response
                 $node->name->toString() === 'render'
             ) || (
                 $node instanceof Node\Expr\FuncCall &&
+                $node->name instanceof Node\Name &&
                 $node->name->toString() === 'inertia'
             )),
         );
