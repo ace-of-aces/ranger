@@ -8,3 +8,4 @@ composer.lock
 /workbench/resources/js/ranger
 tmp
 wat
+.idea
