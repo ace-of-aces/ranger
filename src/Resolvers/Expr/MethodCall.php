@@ -2,6 +2,7 @@
 
 namespace Laravel\Ranger\Resolvers\Expr;
 
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Laravel\Ranger\Collectors\Models;
@@ -28,10 +29,15 @@ class MethodCall extends AbstractResolver
         if ($varType instanceof ClassType) {
             // TODO: Boo, why are we having trouble resolving this
             if ($node->name->name === 'user' && $varType->resolved() === Request::class) {
-                $model = app(Models::class)->get('App\\Models\\User');
+                try {
+                    $guardModel = app(Guard::class)->getProvider()->getModel();
+                    $model = app(Models::class)->get($guardModel);
 
-                if ($model) {
-                    return RangerType::string($model->name);
+                    if ($model) {
+                        return RangerType::union(RangerType::null(), RangerType::string($model->name));
+                    }
+                } catch (\Throwable $e) {
+                    //
                 }
             }
 
