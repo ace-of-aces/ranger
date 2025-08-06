@@ -3,7 +3,7 @@
 namespace Laravel\Ranger\Util;
 
 use Illuminate\Support\Collection;
-use Laravel\Ranger\Types\Contracts\Type as ResultContract;
+use Laravel\Ranger\Types\Contracts\Type as TypeContract;
 use Laravel\Ranger\Types\Type as RangerType;
 use PhpParser\Node\Expr\CallLike;
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
@@ -51,7 +51,7 @@ class DocBlockParser
         return collect($returnTypeValues)->map($this->resolve(...));
     }
 
-    public function parseVar(string $docBlock): ?ResultContract
+    public function parseVar(string $docBlock): ?TypeContract
     {
         $this->parse($docBlock);
 
@@ -72,6 +72,21 @@ class DocBlockParser
         return RangerType::union(...$result);
     }
 
+    public function parseProperties(string $docBlock): array
+    {
+        $this->parse($docBlock);
+
+        $propertyTagValues = array_merge(
+            $this->parsed->getPropertyTagValues(),
+            $this->parsed->getPropertyReadTagValues(),
+            $this->parsed->getPropertyWriteTagValues()
+        );
+
+        return collect($propertyTagValues)->mapWithKeys(fn ($node) => [
+            ltrim($node->propertyName, '$') => $this->resolve($node->type),
+        ])->toArray();
+    }
+
     protected function parse(string $docBlock): PhpDocNode
     {
         $tokens = new TokenIterator($this->lexer->tokenize($docBlock));
@@ -80,7 +95,7 @@ class DocBlockParser
         return $this->parsed;
     }
 
-    protected function resolve($value): ResultContract|string
+    protected function resolve($value): TypeContract|string
     {
         return $this->typeResolver->setParsed($this->parsed)->setReferenceNode($this->node)->from($value);
     }

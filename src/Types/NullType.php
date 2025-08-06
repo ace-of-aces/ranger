@@ -2,4 +2,7 @@
 
 namespace Laravel\Ranger\Types;
 
-class NullType extends AbstractType implements Contracts\Type {}
+class NullType extends AbstractType implements Contracts\Type
+{
+    public bool $nullable = true;
+}

@@ -10,14 +10,17 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Collection;
 use Laravel\Ranger\Components\Model as ModelComponent;
-use Laravel\Ranger\Types\Contracts\Type as ResultContract;
+use Laravel\Ranger\Types\Contracts\Type as TypeContract;
 use Laravel\Ranger\Types\Type;
+use Laravel\Ranger\Types\UnionType;
 use Laravel\Ranger\Util\Arrayable as UtilArrayable;
+use Laravel\Ranger\Util\DocBlockParser;
 use Laravel\Ranger\Util\Reflector;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionUnionType;
 use Spatie\StructureDiscoverer\Discover;
+use Throwable;
 
 class Models extends Collector
 {
@@ -28,6 +31,7 @@ class Models extends Collector
     public function __construct(
         protected ModelInspector $inspector,
         protected Reflector $reflector,
+        protected DocBlockParser $docBlockParser,
     ) {
         //
     }
@@ -55,7 +59,7 @@ class Models extends Collector
 
     protected function mapToModel(string $model): void
     {
-        $reflection = new ReflectionClass($model);
+        $reflection = $this->reflector->reflectClass($model);
 
         if (! $reflection->isInstantiable()) {
             return;
@@ -63,10 +67,41 @@ class Models extends Collector
 
         $modelComponent = new ModelComponent($model);
 
-        $info = $this->inspector->inspect($model);
+        try {
+            $this->resolveFromDatabase($modelComponent);
+        } catch (Throwable $e) {
+            // Unable to inspect model, possibly due to missing database connection
+            $this->resolveFromReflection($modelComponent);
+        }
+
+        $this->modelComponents->push($modelComponent);
+    }
+
+    protected function resolveFromReflection(ModelComponent $modelComponent): void
+    {
+        $reflection = $this->reflector->reflectClass($modelComponent->name);
+
+        if ($reflection->getDocComment()) {
+            $props = $this->docBlockParser->parseProperties($reflection->getDocComment());
+
+            foreach ($props as $name => $type) {
+                if ($type instanceof UnionType) {
+                    $type->nullable(collect($type->types)->contains(fn (TypeContract $t) => $t->nullable));
+                }
+
+                $modelComponent->addAttribute($name, $type);
+            }
+        }
+
+        // TODO: Fill in the rest of the attributes, relations, etc.
+    }
+
+    protected function resolveFromDatabase(ModelComponent $modelComponent): void
+    {
+        $info = $this->inspector->inspect($modelComponent->name);
 
         foreach ($info['attributes'] as $attribute) {
-            $prop = $this->resolveAttributeType($attribute, $model);
+            $prop = $this->resolveAttributeType($attribute, $modelComponent->name);
             $prop->nullable($attribute['nullable'] ?? false);
 
             $modelComponent->addAttribute($attribute['name'], $prop);
@@ -93,11 +128,9 @@ class Models extends Collector
                     : Type::string($relation['related']),
             );
         }
-
-        $this->modelComponents->push($modelComponent);
     }
 
-    protected function resolveAttributeType(array $attribute, string $model): ResultContract
+    protected function resolveAttributeType(array $attribute, string $model): TypeContract
     {
         if ($attribute['cast']) {
             if ($attribute['cast'] === 'accessor') {
@@ -206,7 +239,7 @@ class Models extends Collector
         return Type::from($attribute['type']);
     }
 
-    protected function resolveAccessorType(array $attribute, string $model): ResultContract
+    protected function resolveAccessorType(array $attribute, string $model): TypeContract
     {
         $accessor = $attribute['name'];
 
@@ -226,7 +259,7 @@ class Models extends Collector
         return Type::mixed();
     }
 
-    protected function getReturnType(string|ReflectionClass $class, string $method): ?ResultContract
+    protected function getReturnType(string|ReflectionClass $class, string $method): ?TypeContract
     {
         $reflection = $this->reflector->reflectClass($class);
 
@@ -255,7 +288,7 @@ class Models extends Collector
         return $this->getFinalReturnType($returnType);
     }
 
-    protected function getFinalReturnType(ReflectionNamedType $returnType): ?ResultContract
+    protected function getFinalReturnType(ReflectionNamedType $returnType): ?TypeContract
     {
         if (! $returnType->isBuiltin()) {
             return Type::string($returnType->getName());
@@ -274,7 +307,7 @@ class Models extends Collector
         };
     }
 
-    protected function resolveClassCast(array $attribute): ResultContract
+    protected function resolveClassCast(array $attribute): TypeContract
     {
         $reflection = new \ReflectionClass($attribute['cast']);
         $default = Type::string($attribute['cast']);
