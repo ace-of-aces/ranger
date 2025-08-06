@@ -7,6 +7,8 @@ use PhpParser\Node\Arg;
 
 class Request
 {
+    use ResolvesAuthenticatable;
+
     public static function all(...$args)
     {
         if (count($args) === 0) {

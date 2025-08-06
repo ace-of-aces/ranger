@@ -2,6 +2,7 @@
 
 namespace Laravel\Ranger\Known;
 
+use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Auth as AuthFacade;
 use Illuminate\Support\Facades\Request as RequestFacade;
 use Laravel\Ranger\Collectors\Models;
@@ -10,6 +11,7 @@ class Known
 {
     protected static $mapping = [
         RequestFacade::class => Request::class,
+        HttpRequest::class => Request::class,
         AuthFacade::class => Auth::class,
     ];
 
