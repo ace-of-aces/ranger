@@ -6,6 +6,8 @@ interface Type
 {
     public function isOptional(): bool;
 
+    public function isNullable(): bool;
+
     public function quote(bool $quote = true): static;
 
     public function required(bool $required = true): static;

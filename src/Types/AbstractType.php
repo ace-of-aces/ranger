@@ -45,6 +45,11 @@ abstract class AbstractType
         return ! $this->required;
     }
 
+    public function isNullable(): bool
+    {
+        return $this->nullable;
+    }
+
     public function __toString()
     {
         return static::class.':'.$this->id();
