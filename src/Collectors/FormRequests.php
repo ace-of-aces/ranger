@@ -18,6 +18,7 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Param;
 use PhpParser\Node\Scalar\String_;
 use ReflectionClass;
+use ReflectionFunction;
 use ReflectionMethod;
 use Stringable;
 
@@ -35,10 +36,17 @@ class FormRequests
     public function parseRequest(array $action): ?Validator
     {
         if ($action['uses'] instanceof Closure) {
-            $reflection = new \ReflectionFunction($action['uses']);
+            $reflection = new ReflectionFunction($action['uses']);
         } else {
             [$controller, $method] = explode('@', $action['uses']);
-            $classReflection = new \ReflectionClass($controller);
+            $classReflection = new ReflectionClass($controller);
+
+            if (! $classReflection->hasMethod($method)) {
+                Debug::log("Method {$method} not found in class {$controller}");
+
+                return null;
+            }
+
             $reflection = $classReflection->getMethod($method);
         }
 
@@ -93,7 +101,7 @@ class FormRequests
             return false;
         }
 
-        $reflection = new \ReflectionClass($item->type->toString());
+        $reflection = new ReflectionClass($item->type->toString());
 
         return $reflection->isSubclassOf(FormRequest::class);
     }
@@ -143,6 +151,7 @@ class FormRequests
                         $expr = $this->parser->printer()->prettyPrintExpr($item->value);
 
                         try {
+                            // TODO: Just parse it, yeah?
                             $result = eval('return call_user_func(function() { return '.$expr.'; });');
 
                             return $result instanceof Stringable ? (string) $result : $result;
@@ -158,7 +167,8 @@ class FormRequests
                     ->map(
                         fn ($item) => $item instanceof ArrayItem && $item->value instanceof String_
                             ? new Rule($item->value->value) : new Rule($item)
-                    ),
+                    )
+                    ->values(),
             ];
         }
 

@@ -4,6 +4,7 @@ namespace Laravel\Ranger\Collectors;
 
 use Closure;
 use Laravel\Ranger\Components\JsonResponse;
+use Laravel\Ranger\Debug;
 use Laravel\Ranger\Util\Parser;
 use Laravel\Ranger\Util\TypeResolver;
 use PhpParser\Node;
@@ -29,6 +30,13 @@ class Response
         } else {
             [$controller, $method] = explode('@', $routeUses['uses']);
             $classReflection = new ReflectionClass($controller);
+
+            if (! $classReflection->hasMethod($method)) {
+                Debug::log("Method {$method} not found in class {$controller}");
+
+                return [];
+            }
+
             $reflection = $classReflection->getMethod($method);
         }
 

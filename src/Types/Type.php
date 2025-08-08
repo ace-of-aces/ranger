@@ -50,6 +50,11 @@ class Type
         return new NullType;
     }
 
+    public static function never(): Contracts\Type
+    {
+        return new NeverType;
+    }
+
     public static function from(mixed $value): Contracts\Type
     {
         if ($value instanceof Contracts\Type) {

@@ -26,7 +26,7 @@ class FuncCall extends AbstractResolver
                 if ($array instanceof ArrayType) {
                     $finalArray = $finalArray->merge($array->value);
                 } else {
-                    dd('Unsupported array_merge argument type', $array);
+                    dump('Unsupported array_merge argument type', $array);
                 }
 
                 // $finalArray['[key: string]'] = 'mixed';

@@ -65,6 +65,16 @@ class Ranger
         $this->addCollectionCallback(Collectors\BroadcastChannels::class, $callback);
     }
 
+    public function onEnvironmentVariable(callable $callback): void
+    {
+        $this->addCallback(Collectors\EnvironmentVariables::class, $callback);
+    }
+
+    public function onEnvironmentVariables(callable $callback): void
+    {
+        $this->addCollectionCallback(Collectors\EnvironmentVariables::class, $callback);
+    }
+
     public function walk()
     {
         foreach ($this->callbacks as $collector => $callbacks) {

@@ -3,7 +3,7 @@
 namespace Laravel\Ranger;
 
 // TODO: Temp fix, gotta figure this out...
-ini_set('memory_limit', '256M');
+ini_set('memory_limit', '1G');
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;

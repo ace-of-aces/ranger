@@ -51,25 +51,17 @@ class Routes extends Collector
             ->map($this->collectMiddlewareDefaults(...))
             ->flatMap(fn ($r) => $r);
 
-        $newRoute = new Route($route, $defaults, $this->forcedScheme, $this->forcedRoot);
+        $component = new Route($route, $defaults, $this->forcedScheme, $this->forcedRoot);
 
-        $requestValidator = app(FormRequests::class)->parseRequest($route->getAction());
-
-        if ($requestValidator) {
-            $newRoute->setRequestValidator($requestValidator);
+        if ($requestValidator = app(FormRequests::class)->parseRequest($route->getAction())) {
+            $component->setRequestValidator($requestValidator);
         }
 
-        $possibleResponses = [];
+        $component->setPossibleResponses(
+            app(Response::class)->parseResponse($route->getAction()),
+        );
 
-        $responses = app(Response::class)->parseResponse($route->getAction());
-
-        if (count($responses) > 0) {
-            array_push($possibleResponses, ...$responses);
-        }
-
-        $newRoute->setPossibleResponses($possibleResponses);
-
-        return $newRoute;
+        return $component;
     }
 
     protected function collectMiddlewareDefaults($middleware): array
