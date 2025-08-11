@@ -27,6 +27,11 @@ class Type
 
     public static function generic(string $base, array|Collection $types): Contracts\Type
     {
+        // TODO: This seems... like a very specific scenario, we should examine this more closely
+        if ($base === 'class-string' && count($types) === 1 && $types[0] instanceof ClassType) {
+            return $types[0];
+        }
+
         return new GenericObjectType($base, $types);
     }
 

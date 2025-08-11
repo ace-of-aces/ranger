@@ -8,6 +8,7 @@ use Laravel\Ranger\Collectors\Models as CollectorsModels;
 use Laravel\Ranger\Types\ClassType;
 use Laravel\Ranger\Types\Contracts\Type as TypeContract;
 use Laravel\Ranger\Types\MixedType;
+use Laravel\Ranger\Types\StringType;
 use Laravel\Ranger\Types\Type as RangerType;
 use PhpParser\Node;
 use PhpParser\Node\Expr\CallLike;
@@ -120,12 +121,13 @@ class Reflector
         if ($methodReflection->getDocComment()) {
             // Let's assume the docblock comment is more specific than the return type
             // $this->parser->nodeFinder()->findFirst($this->parser->parse($methodReflection), fn($n) => $n instanceof MethodCall && $n->name instanceof Identifier && $n->name->toString() === $methodReflection)
-            $returnType = $this->docBlockParser->parseReturn($methodReflection->getDocComment());
+            $returnType = $this->docBlockParser->parseReturn($methodReflection->getDocComment())?->map(function ($type) use ($className) {
+                if ($type instanceof StringType && in_array($type->value, ['self', 'static', 'parent', '$this'])) {
+                    return RangerType::string($className);
+                }
 
-            // TODO: This is a collection now, not a string or array
-            if ($returnType === '$this') {
-                return RangerType::string($className);
-            }
+                return $type;
+            });
 
             if ($returnType) {
                 $isMixed = $returnType->count() === 1 && $returnType->first() instanceof MixedType;
