@@ -18,7 +18,7 @@ class EnvironmentVariables extends Collector
         $envFile = file_get_contents($envPath);
 
         return collect($_ENV)
-            ->filter(fn ($value, $key) => preg_match('/^'.$key.'=/m', $envFile) === 1)
-            ->map(fn ($value, $key) => new EnvironmentVariable($key, $value));
+            ->filter(fn ($value, $key) => preg_match('/^'.$key.'=/m  ', $envFile) === 1)
+            ->map(fn ($value, $key) => new EnvironmentVariable($key, env($key)));
     }
 }

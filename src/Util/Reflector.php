@@ -145,10 +145,14 @@ class Reflector
         return null;
     }
 
-    public function reflectClass(string|ReflectionClass $class): ReflectionClass
+    public function reflectClass(string|ReflectionClass|ClassType $class): ReflectionClass
     {
         if ($class instanceof ReflectionClass) {
             return $class;
+        }
+
+        if ($class instanceof ClassType) {
+            $class = $class->value;
         }
 
         return $this->classCache[$class] ??= $this->resolveClass($class);
@@ -242,12 +246,10 @@ class Reflector
 
     protected function resolvePropertyType(ReflectionClass $class, string $property): ?TypeContract
     {
-        if (is_string($class)) {
-            $model = app(CollectorsModels::class)->get($class);
+        $model = app(CollectorsModels::class)->get($class->getName());
 
-            if ($model) {
-                return $model->getAttributes()[$property] ?? $model->getRelations()[$property] ?? null;
-            }
+        if ($model) {
+            return $model->getAttributes()[$property] ?? $model->getRelations()[$property] ?? null;
         }
 
         try {

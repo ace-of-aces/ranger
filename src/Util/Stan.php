@@ -20,7 +20,7 @@ class Stan
 
     public function getType(NodeAbstract $node): ?ResultContract
     {
-        return null;
+        // return null;
 
         $this->scope = $this->scopeFactory->create(ScopeContext::create(''));
 
