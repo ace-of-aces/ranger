@@ -11,7 +11,6 @@ trait AnalyzesRoutes
     protected function analyzeRoute(array $action): ?MethodResult
     {
         if ($action['uses'] instanceof Closure) {
-            // TODO: Deal with closures
             return null;
         }
 
@@ -27,8 +26,6 @@ trait AnalyzesRoutes
         $result = $analyzed->getMethod($method);
 
         if (! $result instanceof MethodResult) {
-            info('Non-method reflection in route uses!');
-
             return null;
         }
 
