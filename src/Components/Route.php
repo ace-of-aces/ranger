@@ -7,9 +7,9 @@ use Illuminate\Contracts\Routing\UrlRoutable;
 use Illuminate\Routing\Route as BaseRoute;
 use Illuminate\Routing\RouteAction;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Js;
 use Illuminate\Support\Str;
 use Laravel\Ranger\Support\RouteParameter;
+use Laravel\Ranger\Support\Verb;
 use Laravel\SerializableClosure\Support\ReflectionClosure;
 use ReflectionClass;
 
@@ -19,11 +19,19 @@ class Route
 
     protected ?Validator $requestValidator = null;
 
+    protected ?Collection $parameters = null;
+
+    protected ?string $resolvedUri = null;
+
+    protected ?string $resolvedControllerPath = null;
+
+    protected ?int $methodLineNumber = null;
+
     public function __construct(
-        private BaseRoute $base,
-        private Collection $paramDefaults,
-        private ?string $forcedScheme,
-        private ?string $forcedRoot
+        protected BaseRoute $base,
+        protected Collection $paramDefaults,
+        protected ?string $forcedScheme,
+        protected ?string $forcedRoot
     ) {
         //
     }
@@ -43,30 +51,6 @@ class Route
         return $this->base->getActionName() === $this->base->getActionMethod();
     }
 
-    public function method(): string
-    {
-        return $this->hasInvokableController()
-            ? '__invoke'
-            : $this->base->getActionMethod();
-    }
-
-    public function jsMethod(): string
-    {
-        return $this->finalJsMethod($this->originalJsMethod());
-    }
-
-    public function originalJsMethod()
-    {
-        return $this->hasInvokableController()
-            ? Str::afterLast($this->controller(), '\\')
-            : $this->base->getActionMethod();
-    }
-
-    public function namedMethod(): string
-    {
-        return $this->finalJsMethod(Str::afterLast($this->name(), '.'));
-    }
-
     public function controller(): string
     {
         return $this->hasInvokableController()
@@ -74,33 +58,38 @@ class Route
             : Str::start($this->base->getControllerClass(), '\\');
     }
 
-    public function parameters(): Collection
+    public function method(): string
     {
-        $optionalParameters = collect($this->base->toSymfonyRoute()->getDefaults());
-        $signatureParams = collect($this->base->signatureParameters(UrlRoutable::class));
-
-        return collect($this->base->parameterNames())->map(fn ($name) => new RouteParameter(
-            $name,
-            $optionalParameters->has($name) || $this->paramDefaults->has($name),
-            $this->base->bindingFieldFor($name),
-            $this->paramDefaults->get($name),
-            $signatureParams->first(fn ($p) => $p->getName() === $name),
-        ));
+        return $this->hasInvokableController()
+            ? '__invoke'
+            : $this->base->getActionMethod();
     }
 
-    public function setPossibleResponses(array $possibleResponses): void
+    // public function jsMethod(): string
+    // {
+    //     return $this->finalJsMethod($this->originalJsMethod());
+    // }
+
+    // public function originalJsMethod()
+    // {
+    //     return $this->hasInvokableController()
+    //         ? Str::afterLast($this->controller(), '\\')
+    //         : $this->base->getActionMethod();
+    // }
+
+    // public function namedMethod(): string
+    // {
+    //     return $this->finalJsMethod(Str::afterLast($this->name(), '.'));
+    // }
+
+    public function parameters(): Collection
     {
-        $this->possibleResponses = array_unique($possibleResponses, SORT_REGULAR);
+        return $this->parameters ??= $this->resolveParameters();
     }
 
     public function possibleResponses(): array
     {
         return $this->possibleResponses;
-    }
-
-    public function setRequestValidator(Validator $requestValidator): void
-    {
-        $this->requestValidator = $requestValidator;
     }
 
     public function requestValidator(): ?Validator
@@ -113,32 +102,28 @@ class Route
         return collect($this->base->methods())->mapInto(Verb::class);
     }
 
+    public function setPossibleResponses(array $possibleResponses): void
+    {
+        $this->possibleResponses = array_unique($possibleResponses, SORT_REGULAR);
+    }
+
+    public function setRequestValidator(Validator $requestValidator): void
+    {
+        $this->requestValidator = $requestValidator;
+    }
+
     public function uri(): string
     {
-        $defaultParams = $this->paramDefaults->mapWithKeys(fn ($value, $key) => ["{{$key}}" => "{{$key}?}"]);
-
-        $scheme = $this->scheme() ?? '//';
-
-        $uri = str($this->base->uri)
-            ->start('/')
-            ->when($this->domain() !== null, fn ($uri) => $uri->prepend("{$scheme}{$this->domain()}"))
-            ->replace($defaultParams->keys()->toArray(), $defaultParams->values()->toArray())
-            ->toString();
-
-        return Js::from($uri, JSON_UNESCAPED_SLASHES)->toHtml();
+        return $this->resolvedUri ??= $this->resolveUri();
     }
 
     public function scheme(): ?string
     {
-        if ($this->base->httpOnly()) {
-            return 'http://';
-        }
-
-        if ($this->base->httpsOnly()) {
-            return 'https://';
-        }
-
-        return $this->forcedScheme;
+        return match (true) {
+            $this->base->httpOnly() => 'http://',
+            $this->base->httpsOnly() => 'https://',
+            default => $this->forcedScheme,
+        };
     }
 
     public function domain(): ?string
@@ -163,6 +148,37 @@ class Route
 
     public function controllerPath(): string
     {
+        return $this->resolvedControllerPath ??= $this->resolveControllerPath();
+    }
+
+    public function methodLineNumber(): int
+    {
+        return $this->methodLineNumber ??= $this->resolveMethodLineNumber();
+    }
+
+    protected function resolveMethodLineNumber(): int
+    {
+        $controller = $this->controller();
+
+        if ($controller === '\\Closure') {
+            return (new ReflectionClosure($this->closure()))->getStartLine();
+        }
+
+        if (! class_exists($controller)) {
+            return 0;
+        }
+
+        $reflection = new ReflectionClass($controller);
+
+        if ($reflection->hasMethod($this->method())) {
+            return $reflection->getMethod($this->method())->getStartLine();
+        }
+
+        return 0;
+    }
+
+    protected function resolveControllerPath(): string
+    {
         $controller = $this->controller();
 
         if ($controller === '\\Closure') {
@@ -182,40 +198,41 @@ class Route
         return $this->relativePath((new ReflectionClass($controller))->getFileName());
     }
 
-    public function controllerMethodLineNumber(): int
+    protected function resolveUri(): string
     {
-        $controller = $this->controller();
+        $defaultParams = $this->paramDefaults->mapWithKeys(fn ($value, $key) => ["{{$key}}" => "{{$key}?}"]);
 
-        if ($controller === '\\Closure') {
-            return (new ReflectionClosure($this->closure()))->getStartLine();
-        }
+        $scheme = $this->scheme() ?? '//';
 
-        if (! class_exists($controller)) {
-            return 0;
-        }
+        return str($this->base->uri)
+            ->start('/')
+            ->when($this->domain() !== null, fn ($uri) => $uri->prepend("{$scheme}{$this->domain()}"))
+            ->replace($defaultParams->keys()->toArray(), $defaultParams->values()->toArray())
+            ->toString();
 
-        $reflection = (new ReflectionClass($controller));
-
-        if ($reflection->hasMethod($this->method())) {
-            return $reflection->getMethod($this->method())->getStartLine();
-        }
-
-        return 0;
+        // return Js::from($uri, JSON_UNESCAPED_SLASHES)->toHtml();
     }
 
-    private function finalJsMethod(string $method): string
+    protected function resolveParameters(): Collection
     {
-        // TODO: FIx this
-        return $method;
-        // return TypeScript::safeMethod($method, 'Method');
+        $optionalParameters = collect($this->base->toSymfonyRoute()->getDefaults());
+        $signatureParams = collect($this->base->signatureParameters(UrlRoutable::class));
+
+        return collect($this->base->parameterNames())->map(fn ($name) => new RouteParameter(
+            $name,
+            $optionalParameters->has($name) || $this->paramDefaults->has($name),
+            $this->base->bindingFieldFor($name),
+            $this->paramDefaults->get($name),
+            $signatureParams->first(fn ($p) => $p->getName() === $name),
+        ));
     }
 
-    private function relativePath(string $path)
+    protected function relativePath(string $path)
     {
         return str($path)->replace(base_path(), '')->ltrim(DIRECTORY_SEPARATOR)->replace(DIRECTORY_SEPARATOR, '/')->toString();
     }
 
-    private function closure(): Closure
+    protected function closure(): Closure
     {
         return RouteAction::containsSerializedClosure($this->base->getAction())
             ? unserialize($this->base->getAction('uses'))->getClosure()

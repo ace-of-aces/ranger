@@ -4,8 +4,8 @@ use App\Http\Controllers\InvokableController;
 use App\Http\Controllers\PostController;
 use Laravel\Ranger\Collectors\Routes;
 use Laravel\Ranger\Components\Route;
-use Laravel\Ranger\Components\Verb;
 use Laravel\Ranger\Support\RouteParameter;
+use Laravel\Ranger\Support\Verb;
 
 beforeEach(function () {
     $this->collector = app(Routes::class);
@@ -254,7 +254,7 @@ describe('controller method line numbers', function () {
     it('returns line number for controller methods', function () {
         $postRoute = $this->routes->first(fn (Route $r) => $r->name() === 'posts.index');
 
-        expect($postRoute->controllerMethodLineNumber())->toBeGreaterThan(0);
+        expect($postRoute->methodLineNumber())->toBeGreaterThan(0);
     });
 });
 

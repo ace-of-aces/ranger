@@ -9,7 +9,7 @@ use Laravel\Ranger\Components\InertiaSharedData;
 use Laravel\Ranger\Components\JsonResponse;
 use Laravel\Ranger\Components\Model;
 use Laravel\Ranger\Components\Validator;
-use Laravel\Ranger\Components\Verb;
+use Laravel\Ranger\Support\Verb;
 use Laravel\Surveyor\Types\ArrayType;
 use Laravel\Surveyor\Types\StringType;
 
