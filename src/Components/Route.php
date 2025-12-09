@@ -9,6 +9,7 @@ use Illuminate\Routing\RouteAction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Js;
 use Illuminate\Support\Str;
+use Laravel\Ranger\Support\RouteParameter;
 use Laravel\SerializableClosure\Support\ReflectionClosure;
 use ReflectionClass;
 
@@ -76,10 +77,9 @@ class Route
     public function parameters(): Collection
     {
         $optionalParameters = collect($this->base->toSymfonyRoute()->getDefaults());
-
         $signatureParams = collect($this->base->signatureParameters(UrlRoutable::class));
 
-        return collect($this->base->parameterNames())->map(fn ($name) => new Parameter(
+        return collect($this->base->parameterNames())->map(fn ($name) => new RouteParameter(
             $name,
             $optionalParameters->has($name) || $this->paramDefaults->has($name),
             $this->base->bindingFieldFor($name),

@@ -8,6 +8,9 @@ class Enum
 {
     use HasFilePath;
 
+    /**
+     * @param  array<string, string>  $cases
+     */
     public function __construct(
         public readonly string $name,
         public readonly array $cases

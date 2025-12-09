@@ -1,32 +1,34 @@
 <?php
 
-namespace Laravel\Ranger\Components;
+namespace Laravel\Ranger\Support;
 
 use Illuminate\Database\Eloquent\Model;
 
-class BindingResolver
+class RouteBindingResolver
 {
     protected static $booted = [];
 
     protected static $columns = [];
 
+    /**
+     * @return array{type: string|null, key: string}
+     */
     public static function resolveTypeAndKey(string $routable, $key): array
     {
         $booted = self::$booted[$routable] ??= app($routable);
 
         $key ??= $booted->getRouteKeyName();
 
-        if (! ($booted instanceof Model)) {
+        if (! $booted instanceof Model) {
             return [null, $key];
         }
 
         self::$columns[$routable] ??= $booted->getConnection()->getSchemaBuilder()->getColumns($booted->getTable());
 
-        return [
-            collect(self::$columns[$routable])->first(
-                fn ($column) => $column['name'] === $key,
-            )['type_name'] ?? null,
-            $key,
-        ];
+        $firstColumn = collect(self::$columns[$routable])->first(
+            fn ($column) => $column['name'] === $key,
+        );
+
+        return [$firstColumn['type_name'] ?? null, $key];
     }
 }

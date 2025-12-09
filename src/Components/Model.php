@@ -21,6 +21,22 @@ class Model
         //
     }
 
+    /**
+     * @return array<string, Type>
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * @return array<string, Type>
+     */
+    public function getRelations(): array
+    {
+        return $this->relations;
+    }
+
     public function addAttribute(string $name, Type $type): void
     {
         $this->attributes[$name] = $type;
@@ -29,15 +45,5 @@ class Model
     public function addRelation(string $name, Type $type): void
     {
         $this->relations[$name] = $type;
-    }
-
-    public function getAttributes(): array
-    {
-        return $this->attributes;
-    }
-
-    public function getRelations(): array
-    {
-        return $this->relations;
     }
 }
