@@ -18,21 +18,26 @@ class EnvironmentVariables extends Collector
         $envFile = file_get_contents($envPath);
 
         return collect($_ENV)
-            ->filter(fn ($value, $key) => preg_match('/^'.$key.'=/m  ', $envFile) === 1)
-            ->map($this->toComponent(...))
+            ->filter(fn ($_, $key) => preg_match('/^'.$key.'=/m  ', $envFile) === 1)
+            ->map(fn ($_, $key) => $this->toComponent($key))
             ->values();
     }
 
-    protected function toComponent(string $envValue, string $envKey): EnvironmentVariable
+    protected function toComponent(string $envKey): EnvironmentVariable
     {
-        $value = env($envKey);
+        return new EnvironmentVariable($envKey, $this->resolveValue(env($envKey)));
+    }
 
+    protected function resolveValue(mixed $value): mixed
+    {
         if (is_float($value)) {
-            $value = (float) $value;
-        } elseif (is_numeric($value)) {
-            $value = (int) $value;
+            return (float) $value;
         }
 
-        return new EnvironmentVariable($envKey, $value);
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return $value;
     }
 }
