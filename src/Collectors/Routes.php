@@ -32,21 +32,24 @@ class Routes extends Collector
     public function collect(): Collection
     {
         return collect($this->router->getRoutes())
+            ->filter($this->filterRoute(...))
             ->map($this->mapToRoute(...))
             ->map($this->resolveResponses(...));
     }
 
+    protected function filterRoute(BaseRoute $route): bool
+    {
+        return ! str_starts_with($route->getName() ?? '', 'nova.');
+    }
+
     protected function resolveResponses(Route $route): Route
     {
-        $possibleResponses = collect($route->possibleResponses())->map(function ($response) {
-            if (! is_string($response)) {
-                return $response;
-            }
-
-            return InertiaComponents::getComponent($response);
-        });
-
-        $route->setPossibleResponses($possibleResponses->all());
+        $route->setPossibleResponses(
+            array_map(
+                fn ($response) => is_string($response) ? InertiaComponents::getComponent($response) : $response,
+                $route->possibleResponses(),
+            ),
+        );
 
         return $route;
     }
@@ -57,16 +60,11 @@ class Routes extends Collector
             ->map($this->collectMiddlewareDefaults(...))
             ->flatMap(fn ($r) => $r);
 
-        $component = new Route(
-            $route,
-            $defaults,
-            $this->forcedScheme,
-            $this->forcedRoot,
-        );
+        $component = new Route($route, $defaults, $this->forcedScheme, $this->forcedRoot);
 
-        // if ($requestValidator = $this->formRequestCollector->parseRequest($route->getAction())) {
-        //     $component->setRequestValidator($requestValidator);
-        // }
+        if ($requestValidator = $this->formRequestCollector->parseRequest($route->getAction())) {
+            $component->setRequestValidator($requestValidator);
+        }
 
         $component->setPossibleResponses(
             $this->responseCollector->parseResponse($route->getAction()),

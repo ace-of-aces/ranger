@@ -2,33 +2,17 @@
 
 namespace Laravel\Ranger\Validation;
 
-use Illuminate\Contracts\Validation\CompilableRules;
-use Illuminate\Contracts\Validation\Rule as OldValidationRule;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rules\Enum;
-use Illuminate\Validation\ValidationRuleParser;
 
 class Rule
 {
-    protected array $rule;
-
     public function __construct(
-        array|string|OldValidationRule|ValidationRule|CompilableRules $rule,
+        protected array $rule,
     ) {
-        $this->rule = ValidationRuleParser::parse($rule);
+        //
     }
 
-    public function is(string $id): bool
-    {
-        return $this->rule[0] === $id;
-    }
-
-    public function isEnum(): bool
-    {
-        return $this->rule[0] instanceof Enum;
-    }
-
-    public function rule()
+    public function rule(): mixed
     {
         return $this->rule[0];
     }
@@ -36,6 +20,16 @@ class Rule
     public function getParams(): array
     {
         return $this->rule[1];
+    }
+
+    public function is(string $id): bool
+    {
+        return $this->rule() === $id;
+    }
+
+    public function isEnum(): bool
+    {
+        return $this->rule() instanceof Enum;
     }
 
     public function hasParams(): bool

@@ -4,49 +4,34 @@ namespace Laravel\Ranger\Collectors;
 
 use Closure;
 use Laravel\Ranger\Components\JsonResponse;
-use Laravel\Ranger\Debug;
+use Laravel\Ranger\Support\AnalyzesRoutes;
 use Laravel\Surveyor\Analyzed\MethodResult;
 use Laravel\Surveyor\Analyzer\Analyzer;
 use Laravel\Surveyor\Types\ArrayType;
 use Laravel\Surveyor\Types\Contracts\MultiType;
 use Laravel\Surveyor\Types\Entities\InertiaRender;
-use ReflectionFunction;
 
 class Response
 {
+    use AnalyzesRoutes;
+
     public function __construct(
         protected Analyzer $analyzer,
     ) {
         //
     }
 
-    public function parseResponse(array $routeUses): array
+    public function parseResponse(array $action): array
     {
-        if ($routeUses['uses'] instanceof Closure) {
-            $reflection = new ReflectionFunction($routeUses['uses']);
-        } else {
-            [$controller, $method] = explode('@', $routeUses['uses']);
-            $analyzed = $this->analyzer->analyzeClass($controller)->result();
+        $result = $this->analyzeRoute($action);
 
-            if (! $analyzed->hasMethod($method)) {
-                Debug::log("Method {$method} not found in class {$controller}");
-
-                return [];
-            }
-
-            $reflection = $analyzed->getMethod($method);
-        }
-
-        if (! $reflection instanceof MethodResult) {
-            // TODO: Deal with closures
-            info('Non-method reflection in route uses!');
-
+        if (! $result) {
             return [];
         }
 
         return array_merge(
-            $this->getInertiaResponse($reflection),
-            $this->getJsonResponse($reflection),
+            $this->getInertiaResponse($result),
+            $this->getJsonResponse($result),
         );
     }
 

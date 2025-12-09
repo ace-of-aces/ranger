@@ -3,7 +3,6 @@
 namespace Laravel\Ranger\Collectors;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\ModelInspector;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Collection;
@@ -13,29 +12,20 @@ use Spatie\StructureDiscoverer\Discover;
 
 class Models extends Collector
 {
-    protected Collection $models;
-
     protected Collection $modelComponents;
 
-    public function __construct(
-        protected ModelInspector $inspector,
-        protected Analyzer $analyzer,
-    ) {
+    public function __construct(protected Analyzer $analyzer)
+    {
         $this->modelComponents = collect();
     }
 
     public function collect(): Collection
     {
-        $this->models = collect(
-            Discover::in(app_path())
-                ->classes()
-                ->extending(Model::class, User::class, Pivot::class)
-                ->get()
-        );
+        foreach ($this->findModels() as $model) {
+            $this->toComponent($model);
+        }
 
-        $this->models->each($this->toComponent(...));
-
-        return $this->modelComponents;
+        return $this->modelComponents->values();
     }
 
     public function get(string $model): ?ModelComponent
@@ -63,7 +53,7 @@ class Models extends Collector
             if ($method->isModelRelation()) {
                 $returnType = $method->returnType();
 
-                if (! $this->modelComponents->has($returnType->value)) {
+                if (! $this->modelComponents->offsetExists($returnType->value)) {
                     $this->toComponent($returnType->value);
                 }
 
@@ -71,6 +61,14 @@ class Models extends Collector
             }
         }
 
-        $this->modelComponents->push($modelComponent);
+        $this->modelComponents->offsetSet($modelComponent->name, $modelComponent);
+    }
+
+    protected function findModels()
+    {
+        return Discover::in(app_path())
+            ->classes()
+            ->extending(Model::class, User::class, Pivot::class)
+            ->get();
     }
 }
