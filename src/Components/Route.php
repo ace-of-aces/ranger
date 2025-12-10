@@ -48,13 +48,18 @@ class Route
 
     public function hasInvokableController(): bool
     {
-        return $this->base->getActionName() === $this->base->getActionMethod();
+        return $this->actionName() === $this->base->getActionMethod();
+    }
+
+    public function actionName(): string
+    {
+        return $this->base->getActionName();
     }
 
     public function controller(): string
     {
         return $this->hasInvokableController()
-            ? Str::start($this->base->getActionName(), '\\')
+            ? Str::start($this->actionName(), '\\')
             : Str::start($this->base->getControllerClass(), '\\');
     }
 
