@@ -3,11 +3,23 @@
 namespace Laravel\Ranger\Collectors;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Database\Eloquent\Relations\HasOneOrManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOneOrMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Collection;
 use Laravel\Ranger\Components\Model as ModelComponent;
 use Laravel\Surveyor\Analyzer\Analyzer;
+use Laravel\Surveyor\Types\ArrayType;
+use Laravel\Surveyor\Types\ClassType;
+use Laravel\Surveyor\Types\Contracts\Type as SurveyorTypeContract;
+use Laravel\Surveyor\Types\Type;
 use Spatie\StructureDiscoverer\Discover;
 
 class Models extends Collector
@@ -42,7 +54,7 @@ class Models extends Collector
     public function get(string $model): ?ModelComponent
     {
         return $this->getCollection()->first(
-            fn (ModelComponent $component) => $component->name === $model,
+            fn(ModelComponent $component) => $component->name === $model,
         );
     }
 
@@ -67,10 +79,10 @@ class Models extends Collector
 
         foreach ($result->publicMethods() as $method) {
             if ($method->isModelRelation()) {
-                $returnType = $method->returnType();
+                $returnType = $this->resolveReturnType($method->returnType());
 
-                if (! $this->modelComponents->offsetExists($returnType->value)) {
-                    $this->toComponent($returnType->value);
+                if ($returnType === null) {
+                    continue;
                 }
 
                 $modelComponent->addRelation($method->name(), $returnType);
@@ -78,5 +90,46 @@ class Models extends Collector
         }
 
         $this->modelComponents->offsetSet($modelComponent->name, $modelComponent);
+    }
+
+    protected function resolveReturnType(SurveyorTypeContract $type): ?SurveyorTypeContract
+    {
+        if (!$type instanceof ClassType) {
+            return null;
+        }
+
+        $relatedModel = $type->genericTypes()['TRelatedModel'] ?? null;
+
+        if (! $relatedModel || !$relatedModel instanceof ClassType) {
+            return null;
+        }
+
+        if (! $this->modelComponents->offsetExists($relatedModel)) {
+            $this->toComponent($relatedModel->value);
+        }
+
+        $collectionRelations = [
+            BelongsToMany::class,
+            HasMany::class,
+            HasManyThrough::class,
+            MorphMany::class,
+            MorphToMany::class,
+        ];
+
+        if (in_array($type->value, $collectionRelations)) {
+            return new ArrayType([$relatedModel]);
+        }
+
+        $maybeCollectionRelation = [
+            MorphOneOrMany::class,
+            HasOneOrMany::class,
+            HasOneOrManyThrough::class,
+        ];
+
+        if (in_array($type->value, $maybeCollectionRelation)) {
+            return Type::union(new ClassType($type->value), new ArrayType([$relatedModel]));
+        }
+
+        return $relatedModel;
     }
 }
