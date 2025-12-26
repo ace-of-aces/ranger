@@ -54,7 +54,7 @@ class Models extends Collector
     public function get(string $model): ?ModelComponent
     {
         return $this->getCollection()->first(
-            fn(ModelComponent $component) => $component->name === $model,
+            fn (ModelComponent $component) => $component->name === $model,
         );
     }
 
@@ -70,6 +70,8 @@ class Models extends Collector
         }
 
         $modelComponent = new ModelComponent($model);
+
+        $this->modelComponents->offsetSet($modelComponent->name, $modelComponent);
 
         foreach ($result->publicProperties() as $property) {
             if ($property->modelAttribute || $property->fromDocBlock) {
@@ -88,23 +90,21 @@ class Models extends Collector
                 $modelComponent->addRelation($method->name(), $returnType);
             }
         }
-
-        $this->modelComponents->offsetSet($modelComponent->name, $modelComponent);
     }
 
     protected function resolveReturnType(SurveyorTypeContract $type): ?SurveyorTypeContract
     {
-        if (!$type instanceof ClassType) {
+        if (! $type instanceof ClassType) {
             return null;
         }
 
         $relatedModel = $type->genericTypes()['TRelatedModel'] ?? null;
 
-        if (! $relatedModel || !$relatedModel instanceof ClassType) {
+        if (! $relatedModel || ! $relatedModel instanceof ClassType) {
             return null;
         }
 
-        if (! $this->modelComponents->offsetExists($relatedModel)) {
+        if (! $this->modelComponents->offsetExists($relatedModel->value)) {
             $this->toComponent($relatedModel->value);
         }
 
