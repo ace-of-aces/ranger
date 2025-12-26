@@ -1,6 +1,16 @@
 # Release Notes
 
-## [Unreleased](https://github.com/laravel/ranger/compare/v0.1.1...main)
+## [Unreleased](https://github.com/laravel/ranger/compare/v0.1.2...main)
+
+## [v0.1.2](https://github.com/laravel/ranger/compare/v0.1.1...v0.1.2) - 2025-12-26
+
+### What's Changed
+
+* Model relations fix by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/ranger/pull/3
+* Fix static analysis by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/ranger/pull/4
+* Remove unnecessary artifacts from release by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/ranger/pull/5
+
+**Full Changelog**: https://github.com/laravel/ranger/compare/v0.1.1...v0.1.2
 
 ## [v0.1.1](https://github.com/laravel/ranger/compare/v0.1.0...v0.1.1) - 2025-12-22
 
