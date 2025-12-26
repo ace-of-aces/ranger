@@ -16,6 +16,7 @@ use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Ranger\Components\Model as ModelComponent;
+use Laravel\Surveyor\Analyzed\ClassResult;
 use Laravel\Surveyor\Analyzer\Analyzer;
 use Laravel\Surveyor\Types\ArrayType;
 use Laravel\Surveyor\Types\ClassType;
@@ -73,15 +74,7 @@ class Models extends Collector
 
         $modelComponent = new ModelComponent($model);
 
-        $eagerLoadRelations = [];
-
-        if ($result->hasProperty('with') && $result->getProperty('with')->type instanceof ArrayType) {
-            foreach ($result->getProperty('with')->type->value as $relation) {
-                if ($relation instanceof StringType) {
-                    $eagerLoadRelations[] = $relation->value;
-                }
-            }
-        }
+        $eagerLoadRelations = $this->gatherEagerLoadRelations($result);
 
         $this->modelComponents->offsetSet($modelComponent->name, $modelComponent);
 
@@ -106,6 +99,23 @@ class Models extends Collector
                 $modelComponent->addRelation($method->name(), $returnType);
             }
         }
+    }
+
+    protected function gatherEagerLoadRelations(ClassResult $result): array
+    {
+        if (! $result->hasProperty('with') || ! $result->getProperty('with')->type instanceof ArrayType) {
+            return [];
+        }
+
+        $eagerLoadRelations = [];
+
+        foreach ($result->getProperty('with')->type->value as $relation) {
+            if ($relation instanceof StringType) {
+                $eagerLoadRelations[] = $relation->value;
+            }
+        }
+
+        return $eagerLoadRelations;
     }
 
     protected function resolveReturnType(SurveyorTypeContract $type, bool $required): ?SurveyorTypeContract
