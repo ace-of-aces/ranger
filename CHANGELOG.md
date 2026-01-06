@@ -1,6 +1,19 @@
 # Release Notes
 
-## [Unreleased](https://github.com/laravel/ranger/compare/v0.1.5...main)
+## [Unreleased](https://github.com/laravel/ranger/compare/v0.1.6...main)
+
+## [v0.1.6](https://github.com/laravel/ranger/compare/v0.1.5...v0.1.6) - 2026-01-06
+
+### What's Changed
+
+* Exclude `/workbench` directory as it only used for package development by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/ranger/pull/11
+* Detect and record `withAllErrors` property in Inertia by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/ranger/pull/12
+
+### New Contributors
+
+* [@crynobone](https://github.com/crynobone) made their first contribution in https://github.com/laravel/ranger/pull/11
+
+**Full Changelog**: https://github.com/laravel/ranger/compare/v0.1.5...v0.1.6
 
 ## [v0.1.5](https://github.com/laravel/ranger/compare/v0.1.4...v0.1.5) - 2025-12-29
 
