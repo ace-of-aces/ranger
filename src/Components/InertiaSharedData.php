@@ -8,6 +8,7 @@ class InertiaSharedData
 {
     public function __construct(
         public readonly ArrayType $data,
+        public readonly bool $withAllErrors = false,
     ) {
         //
     }
