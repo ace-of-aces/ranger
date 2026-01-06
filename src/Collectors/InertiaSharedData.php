@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Laravel\Ranger\Components\InertiaSharedData as SharedDataComponent;
 use Laravel\Surveyor\Analyzer\Analyzer;
 use Laravel\Surveyor\Types\ArrayType;
+use Laravel\Surveyor\Types\BoolType;
 use Laravel\Surveyor\Types\Type;
 use Laravel\Surveyor\Types\UnionType;
 use Spatie\StructureDiscoverer\Discover;
@@ -62,6 +63,10 @@ class InertiaSharedData extends Collector
             $data = new ArrayType($finalArray);
         }
 
-        return new SharedDataComponent($data);
+        $withAllErrors = $result->hasProperty('withAllErrors')
+            && $result->getProperty('withAllErrors')->type instanceof BoolType
+            && $result->getProperty('withAllErrors')->type->value === true;
+
+        return new SharedDataComponent($data, $withAllErrors);
     }
 }
